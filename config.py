@@ -53,6 +53,3 @@ config = {
     "epn_peer_mac": b'|\xdf\xa1\xf2\xa2\xd0',
     "epn_channel": const(1)
 }
-
-# Add platform path for imports
-sys.path.append(f"platforms/{config['platform']}")

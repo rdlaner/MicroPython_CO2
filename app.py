@@ -611,7 +611,7 @@ def main() -> None:
 
     # Init device
     logger.info("Initializing device...")
-    import peripherals
+    from platforms.unexpected_maker_feather_s3 import peripherals
     periphs = peripherals.Peripherals(device_state == STATE_LIGHT_SLEEP)
 
     # Initialize SCD41
@@ -704,9 +704,6 @@ def main() -> None:
     co2_device.add_number(number_co2_ref)
 
     config["topics"]["cmd_topic"] = f"{co2_device.number_topic}/cmd"
-
-    logger.info("Backup Ram:")
-    backup_ram.print_elements()
     color_index = 0
 
     # Main Loop
