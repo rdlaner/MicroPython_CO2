@@ -4,32 +4,37 @@ from app import main
 try:
     main()
 except Exception as exc:
-    import adafruit_logging as logging
-    import storage
-    import traceback
-    from supervisor import reload, runtime
+    import io
+    import sys
+    import time
+    from config import config
+    from mp_libs import logging
+    from platforms.unexpected_maker_feather_s3 import peripherals
 
     # Create logger
     logger = logging.getLogger("main")
-
-    if not runtime.serial_connected:
-        # Allow writing to file system
-        storage.remount("/", readonly=False, disable_concurrent_write_protection=True)
-
-        # Create and add file  handler
-        file_handler = logging.FileHandler("Exception_Log.txt", "a")
-        logger.addHandler(file_handler)
+    logger.setLevel(config["logging_level"])
+    file_handler = logging.FileHandler("Exception_Log.txt", "a")
+    file_handler.setLevel(config["logging_level"])
+    file_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(config["logging_level"])
+    stream_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
+    logger.addHandler(stream_handler)
+    logger.addHandler(file_handler)
 
     # Log message to file
     logger.critical("Caught unexpected exception:")
-    logger.critical(f"{''.join(traceback.format_exception(exc, chain=True))}")
+    buf = io.StringIO()
+    sys.print_exception(exc, buf)
+    logger.critical(f"{buf.getvalue()}")
+    logger.critical("Rebooting...")
 
-    if not runtime.serial_connected:
-        # Close/flush file handler
-        file_handler.close()
+    # Close/flush file handler
+    file_handler.close()
 
-        # Set file system back to read-only
-        storage.remount("/", readonly=True, disable_concurrent_write_protection=False)
-
-        logger.critical("Rebooting...")
-        reload()
+    # NOTE: A hard reset will cause RTC memory to be lost
+    periphs = peripherals.Peripherals(False)
+    while True:
+        periphs.led_toggle()
+        time.sleep(0.25)

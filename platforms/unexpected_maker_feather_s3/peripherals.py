@@ -81,14 +81,24 @@ STEMMA_I2C: typing.Any = ...
 # Standard imports
 
 # Third party imports
-import board
 import neopixel
-from analogio import AnalogIn
-from digitalio import DigitalInOut, Direction
+from machine import Pin, ADC
+from micropython import const
 
 # Local imports
 
 # Globals
+VBUS_SENSE_PIN = const(34)
+VBAT_SENSE_PIN = const(2)
+NEO_PIN = const(40)
+LDO2_PIN = const(39)
+LED_PIN = const(13)
+AMB_LIGHT_PIN = const(4)
+SPI_MOSI_PIN = const(35)
+SPI_MISO_PIN = const(37)
+SPI_CLK_PIN = const(36)
+I2C_SDA_PIN = const(8)
+I2C_SCL_PIN = const(9)
 
 
 def rgb_color_wheel(wheel_pos):
@@ -110,33 +120,57 @@ class Peripherals():
     def __init__(self, enable_neo: bool = False) -> None:
         # LDO2 - NEOPIXEL_POWER is same pin as LD02
         # Second I2C bus and neopixel are powered via LDO2
-        self._ld02 = DigitalInOut(board.LDO2)
-        self._ld02.direction = Direction.OUTPUT
-        self._ld02.value = enable_neo
+        self._ld02 = Pin(LDO2_PIN, Pin.OUT)
+        self._ld02.value(enable_neo)
+
+        # LED pins
+        self._led_pin = Pin(LED_PIN, Pin.OUT, value=0)
 
         # Neopixels
-        self.neopixels = neopixel.NeoPixel(board.NEOPIXEL, 1, brightness=0.2)
+        # TODO: Fix this
+        self.neopixels = neopixel.NeoPixel(Pin(NEO_PIN), 1)
 
         # Battery Voltage
-        self._batt_monitor = AnalogIn(board.BATTERY)
+        self._batt_monitor = ADC(Pin(VBAT_SENSE_PIN))
+
+        # 5V sense
+        self._vbus_sense = Pin(VBUS_SENSE_PIN, Pin.IN)
 
     def deinit(self) -> None:
         """Call deinit on all resources to free them"""
-        self.neopixels.deinit()
-        self._ld02.deinit()
-        self._batt_monitor.deinit()
+        pass
 
     @property
     def battery(self) -> float:
         """Return the voltage of the battery"""
-        return self._batt_monitor.value / 5371
+        for _ in range(10):
+            self._batt_monitor.read()
+        measurement = self._batt_monitor.read()
+        measurement /= 4095  # divide by 4095 as we are using the default ADC voltage range of 0-1.2V
+        measurement *= 4.2  # Multiply by 4.2V, our max charge voltage for a 1S LiPo
+        return round(measurement, 2)
+
+    def led_on(self) -> None:
+        """Turn on the LED"""
+        self._led_pin.value(1)
+
+    def led_off(self) -> None:
+        """Turn off the LED"""
+        self._led_pin.value(0)
+
+    def led_toggle(self) -> None:
+        """Toggle the LED"""
+        self._led_pin.value(not self._led_pin.value())
 
     @property
     def ld02(self) -> bool:
         """Check if LDO2 is enabled or not"""
-        return self._ld02.value
+        return bool(self._ld02.value())
 
     @ld02.setter
     def ld02(self, value: bool) -> None:
         """Disable or enbale LDO2"""
-        self._ld02.value = value
+        self._ld02.value(value)
+
+    def usb_connected(self) -> bool:
+        return self._vbus_sense.value() == 1

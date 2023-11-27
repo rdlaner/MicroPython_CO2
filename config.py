@@ -1,11 +1,10 @@
 """CO2 Config File"""
+# pyright: reportGeneralTypeIssues=false
 # Standard imports
-import sys
 from micropython import const
 
 # Third party imports
-import adafruit_logging as logging
-
+from mp_libs import logging
 
 config = {
     # Platform Configuration
@@ -13,7 +12,7 @@ config = {
     "model": "UM",
 
     # App Configuration
-    "device_name": "CO2_SCD41",
+    "device_name": "Bedroom_CO2",
     "light_sleep_sec": const(5),
     "deep_sleep_sec": const(120),
     "upload_rate_sec": const(120),
@@ -24,17 +23,17 @@ config = {
     "display_refresh_rate_sec": const(120),
     "ambient_pressure": const(1000),
     "temp_offset_c": const(0.5),
-    "force_deep_sleep": False,
-    "logging_level": logging.DEBUG,
+    "force_deep_sleep": True,
+    "logging_level": logging.WARNING,
 
     # Display Configuration
     "display_enable": True,
 
     # Transport Configuration
     # supported transports are: "espnow", "miniot", or "mqtt"
-    "enable_network": True,
+    "enable_network": False,
     "network_transport": "miniot",
-    "network_prefix_id": "BPI",
+    "network_prefix_id": "CO2",
 
     # Wifi configuration parameters
     "wifi_channel": const(1),

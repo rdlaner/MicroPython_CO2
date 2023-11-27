@@ -1,5 +1,8 @@
 """CO2 Sensor Application"""
-# pylint: disable=import-error, wrong-import-position, c-extension-no-member, no-member, no-name-in-module, import-outside-toplevel
+# pylint: disable=import-error, wrong-import-position, c-extension-no-member, no-member, no-name-in-module, import-outside-toplevel, logging-fstring-interpolation
+# pyright: reportGeneralTypeIssues=false
+# TODO: Use scd eeprom to persist settings. Use backup ram as buffer for storing transients only.
+# TODO: Switch to async MQTT?
 # TODO: Apply received miniot data when received.
 # TODO: Convert to settings.toml instead of secrets file...?
 # TODO: Battery improvement - collect several samples and publish them at longer intervals
@@ -8,12 +11,13 @@
 # Using lazy loading of modules to reduce "boot" time as not all are needed for every boot
 # Standard imports
 import time
-app_start = now = time.monotonic()
+app_start = now = time.ticks_ms()
 from micropython import const
 
 # Third party imports
-import adafruit_logging as logging
-from cp_libs.memory import BackupRAM
+from mp_libs import logging
+from mp_libs.memory import BackupRAM
+from mp_libs.sleep import deep_sleep, light_sleep
 
 # Local imports
 from config import config
@@ -31,7 +35,8 @@ BPI_BATT_DXN_VOLTAGE = 4.20
 BACKUP_NAME_PRESSURE = "pressure"
 BACKUP_NAME_CAL = "forced cal"
 BACKUP_NAME_TEMP_OFFSET = "temp offset"
-BACKUP_NAME_DISPLAY_TIME = "display"
+BACKUP_NAME_DISPLAY_INIT = "disp init"
+BACKUP_NAME_DISPLAY_TIME = "disp time"
 BACKUP_NAME_TIME_SYNC_TIME = "time sync"
 BACKUP_NAME_UPLOAD_TIME = "upload"
 BACKUP_NAME_RX_TIME = "receive"
@@ -42,24 +47,28 @@ NUMBER_NAME_TEMP_OFFSET = "Temp Offset"
 NUMBER_NAME_PRESSURE = "Pressure"
 NUMBER_NAME_CO2_REF = "CO2 Ref"
 SENSOR_NAME_BATTERY = "Batt Voltage"
-SENSOR_NAME_SCD41_CO2 = "SCD41 CO2"
-SENSOR_NAME_SCD41_HUM = "SCD41 Humidity"
-SENSOR_NAME_SCD41_TEMP = "SCD41 Temperature"
+SENSOR_NAME_CO2 = "CO2"
+SENSOR_NAME_HUM = "Humidity"
+SENSOR_NAME_TEMP = "Temperature"
 
 # Globals
 backup_ram = BackupRAM()
 logger = logging.getLogger("CO2")
 logger.setLevel(config["logging_level"])
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(config["logging_level"])
+stream_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
+logger.addHandler(stream_handler)
 
 
 # MQTT Callbacks
 # pylint: disable=unused-argument
-def mqtt_disconnected(client: MQTT.MQTT, user_data, return_code: int) -> None:
+def mqtt_disconnected(user_data, return_code: int) -> None:
     """Callback for when MQTT client is disconnected from the broker"""
     logger.debug("MQTT disconnected callback")
 
 
-def mqtt_message(client: MQTT.MQTT, topic: str, message: str) -> None:
+def mqtt_message(topic: str, message: str) -> None:
     """Callback for when MQTT client's subscribed topic receives new data"""
     logger.debug(f"New message on topic {topic}: {message}")
 
@@ -67,9 +76,7 @@ def mqtt_message(client: MQTT.MQTT, topic: str, message: str) -> None:
         try:
             pressure = round(float(message))
         except ValueError as exc:
-            import traceback
-            logger.error("Ambient pressure value invalid:")
-            logger.error(f"{''.join(traceback.format_exception(exc, chain=True))}")
+            logger.exception("Ambient pressure value invalid:", exc_info=exc)
             return
 
         logger.info(f"Updating backup pressure to {pressure}")
@@ -80,9 +87,7 @@ def mqtt_message(client: MQTT.MQTT, topic: str, message: str) -> None:
         try:
             obj = json.loads(message)
         except ValueError as exc:
-            import traceback
-            logger.error("Forced calibration value invalid:")
-            logger.error(f"{''.join(traceback.format_exception(exc, chain=True))}")
+            logger.exception("Forced calibration value invalid:", exc_info=exc)
             return
 
         if NUMBER_NAME_CO2_REF in obj:
@@ -96,10 +101,9 @@ def mqtt_message(client: MQTT.MQTT, topic: str, message: str) -> None:
             logger.info(f"Received new temp offset: {temp_offset}")
 
 
-def backup_ram_init():
+def backup_ram_init(usb_connected: bool):
     """Initialize persistent data"""
-    from supervisor import runtime
-
+    logger.debug("Initializing backup ram...")
     backup_ram.reset()
     backup_ram.add_element(BACKUP_NAME_PRESSURE, "I", config["ambient_pressure"])
     backup_ram.add_element(BACKUP_NAME_CAL, "i", FORCE_CAL_DISABLED)
@@ -112,30 +116,39 @@ def backup_ram_init():
 
     if config["display_enable"]:
         backup_ram.add_element(BACKUP_NAME_DISPLAY_TIME, "I", 0)
+        backup_ram.add_element(BACKUP_NAME_DISPLAY_INIT, "B", False)
 
-    if runtime.usb_connected and not config["force_deep_sleep"]:
+    if usb_connected and not config["force_deep_sleep"]:
         backup_ram.add_element(BACKUP_NAME_STATE, "I", STATE_LIGHT_SLEEP)
     else:
         backup_ram.add_element(BACKUP_NAME_STATE, "I", STATE_DEEP_SLEEP_SAMPLING)
 
 
+def backup_ram_is_valid() -> bool:
+    """Check if backup ram has been properly initialized"""
+    try:
+        backup_ram.get_element(BACKUP_NAME_PRESSURE)
+        backup_ram.get_element(BACKUP_NAME_CAL)
+        backup_ram.get_element(BACKUP_NAME_TEMP_OFFSET)
+        backup_ram.get_element(BACKUP_NAME_ENABLE_NETWORK)
+        backup_ram.get_element(BACKUP_NAME_UPLOAD_TIME)
+        backup_ram.get_element(BACKUP_NAME_TIME_SYNC_TIME)
+        backup_ram.get_element(BACKUP_NAME_SEND_DISCOVERY_TIME)
+        backup_ram.get_element(BACKUP_NAME_RX_TIME)
+        backup_ram.get_element(BACKUP_NAME_STATE)
+
+        if config["display_enable"]:
+            backup_ram.get_element(BACKUP_NAME_DISPLAY_TIME)
+            backup_ram.get_element(BACKUP_NAME_DISPLAY_INIT)
+    except KeyError:
+        return False
+
+    return True
+
+
 def c_to_f(temp_cels: float) -> float:
     """"Convert celsius to fahrenheit"""
-    return (temp_cels * 1.8) + 32.0 if temp_cels else None
-
-
-def deep_sleep(sleep_time: float) -> None:
-    """Deep sleep for specified time.
-
-    Assuming eps32 hardware where device reboots after deep sleep.
-
-    Args:
-        sleep_time (float): Deep sleep duration in seconds
-    """
-    import alarm
-    logger.info("Sleeping...\n")
-    time_alarm = alarm.time.TimeAlarm(monotonic_time=time.monotonic() + sleep_time)
-    alarm.exit_and_deep_sleep_until_alarms(time_alarm)
+    return (temp_cels * 1.8) + 32.0 if temp_cels else 0.0
 
 
 def display_init() -> "Display":
@@ -144,16 +157,25 @@ def display_init() -> "Display":
     Returns:
         Display: New display object
     """
-    from display import Display
-    return Display()
+    logger.info("Initializing display...")
+    if config["display_enable"]:
+        import display
+
+        # Do one-time initiliazation of display
+        if not backup_ram.get_element(BACKUP_NAME_DISPLAY_INIT):
+            display.init()
+            backup_ram.set_element(BACKUP_NAME_DISPLAY_INIT, True)
+
+        return display
+    return None
 
 
-def display_update(display_time: int, sensor_data: list, display: Display = None) -> "Display":
+def display_update(display_time: int, sensor_data: dict, display: Display = None) -> "Display":
     """Perform display update if time has passed defined refresh rate.
 
     Args:
         display_time (int): Time of last display update.
-        sensor_data (list): CO2, temp, hum, and battery data.
+        sensor_data (dict): CO2, temp, hum, and battery data.
         display (Display, optional): Display instance. Defaults to None.
 
     Returns:
@@ -161,7 +183,7 @@ def display_update(display_time: int, sensor_data: list, display: Display = None
     """
     if config["display_enable"] and (time.time() - display_time) >= config["display_refresh_rate_sec"]:
         logger.info("Updating display...")
-        from cp_libs.time import get_fmt_time
+        from mp_libs.time import get_fmt_time
         if not display:
             display = display_init()
 
@@ -174,9 +196,9 @@ def display_update(display_time: int, sensor_data: list, display: Display = None
             uploaded_time = get_fmt_time(backup_ram.get_element(BACKUP_NAME_UPLOAD_TIME))
             display.update_datetime(f"Updated: {now}. Uploaded: {uploaded_time}")
 
-        display.update_co2(sensor_data[SENSOR_NAME_SCD41_CO2])
-        display.update_temp(c_to_f(sensor_data[SENSOR_NAME_SCD41_TEMP]))
-        display.update_hum(sensor_data[SENSOR_NAME_SCD41_HUM])
+        display.update_co2(sensor_data[SENSOR_NAME_CO2])
+        display.update_temp(c_to_f(sensor_data[SENSOR_NAME_TEMP]))
+        display.update_hum(sensor_data[SENSOR_NAME_HUM])
         display.update_batt(sensor_data[SENSOR_NAME_BATTERY])
         display.refresh(delay=False)
         backup_ram.set_element(BACKUP_NAME_DISPLAY_TIME, time.time())
@@ -219,7 +241,7 @@ def network_init(device_state: int) -> "Network":
         Network: New Network instance.
     """
     logger.info("Initializing network ")
-    from cp_libs.network import Network
+    from mp_libs.network import Network
 
     if config["network_transport"] == "espnow":
         network = Network.create_espnow(config["network_prefix_id"])
@@ -241,25 +263,6 @@ def network_init(device_state: int) -> "Network":
     return network
 
 
-def light_sleep(sleep_time: float) -> "Alarm":
-    """Light sleep for specified time.
-
-    Args:
-        sleep_time (float): Light sleep duration in seconds
-
-    Returns:
-        Alarm: Any alarm that caused wake from sleep
-    """
-    import alarm
-    import gc
-    logger.info("Sleeping...\n")
-    time_alarm = alarm.time.TimeAlarm(monotonic_time=time.monotonic() + sleep_time)
-    triggered_alarm = alarm.light_sleep_until_alarms(time_alarm)
-    gc.collect()
-
-    return triggered_alarm
-
-
 def process_calibration(scd41: SCD4X, current_cal_val: int) -> bool:
     """Perform forced recal if received new cal value.
 
@@ -273,7 +276,7 @@ def process_calibration(scd41: SCD4X, current_cal_val: int) -> bool:
     updated = False
     expected_cal_val = backup_ram.get_element(BACKUP_NAME_CAL)
 
-    if expected_cal_val != FORCE_CAL_DISABLED and expected_cal_val != current_cal_val:
+    if expected_cal_val not in (FORCE_CAL_DISABLED, current_cal_val):
         logger.info(f"Updating cal reference from {current_cal_val} to {expected_cal_val}")
         scd41.force_calibration(expected_cal_val)
         updated = True
@@ -330,12 +333,12 @@ def reboot() -> None:
     Should be used for non-failure, intended device reboots. If attempting to recover a device
     due to some failure, use `reset` instead.
     """
-    from supervisor import reload
+    from machine import soft_reset
     logger.warning("Rebooting...")
-    reload()
+    soft_reset()
 
 
-def reset(msg: str = None) -> None:
+def reset(msg: str = "", exc_info=None) -> None:
     """Reset device.
 
     Should be used for attempting to recover a device due to unrecoverable failures.
@@ -345,8 +348,17 @@ def reset(msg: str = None) -> None:
 
     Args:
         msg (str, optional): Optional reboot message.
+        exc_info (Exception, optional): Optional exception instance.
     """
     logger.warning("Rebooting...")
+
+    if exc_info:
+        import io
+        import sys
+        buf = io.StringIO()
+        sys.print_exception(exc_info, buf)
+        msg = f"{msg}\n{buf.getvalue()}"
+
     raise RuntimeError(msg)
 
 
@@ -383,15 +395,14 @@ def receive_data(receive_time: int,
 
         # Receive any available data. If using MQTT, this will call its loop function.
         rxed_data = []
-        rx_win = config["receive_window_sec"]
-        start = time.monotonic()
+        rx_win = config["receive_window_sec"] * 1000.0
+        start = time.ticks_ms()
 
-        while (start + rx_win) > time.monotonic():
+        while (start + rx_win) > time.ticks_ms():
             try:
                 net.receive(rxed_data, recover=recover)
             except Exception as exc:
-                import traceback
-                reset(f"Failed receiving data\n{''.join(traceback.format_exception(exc, chain=True))}")
+                reset("Failed receiving data", exc_info=exc)
             else:
                 backup_ram.set_element(BACKUP_NAME_RX_TIME, time.time())
 
@@ -401,7 +412,7 @@ def receive_data(receive_time: int,
     return net
 
 
-def scd41_init(first_boot: bool, device_state: int) -> "SCD4X":
+def scd41_init(first_boot: bool, device_state: int, i2c_scl_pin: int, i2c_sda_pin: int) -> "SCD4X":
     """Create and initialize an scd41 instance.
 
     Note:
@@ -413,19 +424,20 @@ def scd41_init(first_boot: bool, device_state: int) -> "SCD4X":
     Args:
         first_boot (bool): True if first boot from power-on, False if not.
         device_state (int): Current device state.
+        i2c_scl_pin (int): I2C clock pin number.
+        i2c_sda_pin (int): I2C data pin number.
 
     Returns:
         SCD4X: New SCD4X instance.
     """
-    from adafruit_scd4x import SCD4X
-    from board import SCL, SDA
-    from busio import I2C
-    i2c = I2C(SCL, SDA, frequency=100000)
-    scd41 = SCD4X(i2c)
+    from mp_libs.sensors.scd4x import SCD4X
+    from machine import I2C, Pin
+    i2c = I2C(0, scl=Pin(i2c_scl_pin), sda=Pin(i2c_sda_pin), freq=100000)
+    scd41 = SCD4X(i2c, stop_measurements=False)
 
     if first_boot:
         logger.info("Initializing SCD41:")
-        scd41.stop_periodic_measurement()
+        scd41.stop_periodic_measurement(delay_sec=1.0)
 
         logger.info("Updating self cal mode to OFF")
         scd41.self_calibration_enabled = False
@@ -442,6 +454,7 @@ def scd41_init(first_boot: bool, device_state: int) -> "SCD4X":
         scd41.persist_settings()
 
     if device_state == STATE_LIGHT_SLEEP:
+        scd41.stop_periodic_measurement()
         scd41.start_periodic_measurement()  # High performance mode
 
     return scd41
@@ -483,11 +496,10 @@ def send_data(upload_time: int,
 
         # Publish data
         try:
-            co2_device.publish_numbers()
-            co2_device.publish_sensors()
+            co2_device.publish_numbers(recover=True)
+            co2_device.publish_sensors(recover=True)
         except Exception as exc:
-            import traceback
-            reset(f"Failed sending data\n{''.join(traceback.format_exception(exc, chain=True))}")
+            reset("Failed sending data", exc_info=exc)
         else:
             backup_ram.set_element(BACKUP_NAME_UPLOAD_TIME, time.time())
 
@@ -530,10 +542,9 @@ def send_discovery(discovery_time: int,
 
         # Send discovery data
         try:
-            co2_device.send_discovery()
+            co2_device.send_discovery(recover=True)
         except Exception as exc:
-            import traceback
-            reset(f"Failed sending discovery\n{''.join(traceback.format_exception(exc, chain=True))}")
+            reset("Failed sending discovery", exc_info=exc)
         else:
             backup_ram.set_element(BACKUP_NAME_SEND_DISCOVERY_TIME, time.time())
 
@@ -568,7 +579,7 @@ def time_sync(time_sync_time: int, device_state: int, net: Network = None) -> "N
             network_connect(net)
 
         if net.ntp_time_sync():
-            from cp_libs.time import get_fmt_date, get_fmt_time
+            from mp_libs.time import get_fmt_date, get_fmt_time
             backup_ram.set_element(BACKUP_NAME_TIME_SYNC_TIME, time.time())
             logger.info(f"Time: {get_fmt_time()}")
             logger.info(f"Date: {get_fmt_date()}")
@@ -582,58 +593,57 @@ def update_state(new_state: int):
     Args:
         new_state (int): New state.
     """
+    logger.debug(f"Updating state to {new_state}")
     backup_ram.set_element(BACKUP_NAME_STATE, new_state)
 
 
 def main() -> None:
     """Main function"""
+    logger.debug("Main start")
     logger.debug(f"App start time: {app_start}")
-    logger.debug(f"Time main: {time.monotonic()}")
 
-    import alarm
-    import microcontroller
-    from supervisor import runtime, RunReason
-    if runtime.run_reason == RunReason.SUPERVISOR_RELOAD:
-        first_boot = False
-    else:
-        first_boot = not alarm.wake_alarm
+    import machine
+    first_boot = machine.reset_cause() in [machine.PWRON_RESET, machine.HARD_RESET]
 
-    logger.info(f"Reset reason: {microcontroller.cpu.reset_reason}")
-    logger.info(f"Run reason: {runtime.run_reason}")
-    logger.info(f"Wake alarm: {alarm.wake_alarm}")
+    logger.info(f"Reset cause: {machine.reset_cause()}")
+    logger.info(f"Wake reason: {machine.wake_reason()}")
     logger.info(f"First boot: {first_boot}")
-    logger.info("Initializing...")
-    if first_boot:
-        backup_ram_init()
-
-    # Load state variable
-    device_state = backup_ram.get_element(BACKUP_NAME_STATE)
 
     # Init device
     logger.info("Initializing device...")
     from platforms.unexpected_maker_feather_s3 import peripherals
-    periphs = peripherals.Peripherals(device_state == STATE_LIGHT_SLEEP)
+    periphs = peripherals.Peripherals(False)
+
+    if first_boot:
+        backup_ram_init(periphs.usb_connected())
+    elif not backup_ram_is_valid():
+        backup_ram_init(periphs.usb_connected())
+
+    # Load state variable
+    device_state = backup_ram.get_element(BACKUP_NAME_STATE)
+    logger.info(f"Initial device state: {device_state}")
 
     # Initialize SCD41
     logger.info("Initializing scd41...")
-    scd41 = scd41_init(first_boot, device_state)
+    scd41 = scd41_init(first_boot, device_state, peripherals.I2C_SCL_PIN, peripherals.I2C_SDA_PIN)
 
     # If in STATE_DEEP_SLEEP_SAMPLING, we don't need to take up time with the
     # rest of initialization. So, handle STATE_DEEP_SLEEP_SAMPLING here and skip main loop.
     if device_state == STATE_DEEP_SLEEP_SAMPLING:
         # Send single shot command and then go to sleep
         logger.info("Sending single shot...")
-
         scd41._send_command(SCD41_CMD_SINGLE_SHOT)
-
         update_state(STATE_DEEP_SLEEP)
-        deep_sleep(SINGLE_SHOT_SLEEP_SEC)
+        # deep_sleep(SINGLE_SHOT_SLEEP_SEC, periphs.usb_connected)
+        deep_sleep(SINGLE_SHOT_SLEEP_SEC, lambda: False)
+    elif device_state == STATE_LIGHT_SLEEP:
+        periphs.ld02 = True
 
     # Sensor read functions
     def read_co2():
-        start = time.monotonic()
-        while not scd41.data_ready and time.monotonic() - start < SENSOR_READ_TIMEOUT_SEC:
-            time.sleep(0.1)
+        start = time.ticks_ms()
+        while not scd41.data_ready and time.ticks_ms() - start < SENSOR_READ_TIMEOUT_SEC:
+            time.sleep_ms(5)
         return scd41.CO2
 
     def read_batt():
@@ -649,11 +659,11 @@ def main() -> None:
     sensor_battery = HomeAssistantSensor(
         SENSOR_NAME_BATTERY, read_batt, 2, DeviceClass.BATTERY, "V")
     sensor_scd41_co2 = HomeAssistantSensor(
-        SENSOR_NAME_SCD41_CO2, read_co2, 0, DeviceClass.CARBON_DIOXIDE, "ppm")
+        SENSOR_NAME_CO2, read_co2, 0, DeviceClass.CARBON_DIOXIDE, "ppm")
     sensor_scd41_hum = HomeAssistantSensor(
-        SENSOR_NAME_SCD41_HUM, lambda: scd41.relative_humidity, 0, DeviceClass.HUMIDITY, "%")
+        SENSOR_NAME_HUM, lambda: scd41.relative_humidity, 0, DeviceClass.HUMIDITY, "%")
     sensor_scd41_temp = HomeAssistantSensor(
-        SENSOR_NAME_SCD41_TEMP, lambda: scd41.temperature, 1, DeviceClass.TEMPERATURE, "°C")
+        SENSOR_NAME_TEMP, lambda: scd41.temperature, 1, DeviceClass.TEMPERATURE, "°C")
 
     # Create home assistant numbers
     number_temp_offset = HomeAssistantNumber(
@@ -693,6 +703,7 @@ def main() -> None:
         send_fxn = None
 
     # Create home assistant device
+    logger.debug("Creating home assistant device...")
     co2_device = HomeAssistantDevice(config["device_name"], config["model"], send_fxn, debug=False)
     # Add co2 sensor first since its read fxn waits for data ready
     co2_device.add_sensor(sensor_scd41_co2)
@@ -731,13 +742,21 @@ def main() -> None:
             sensor_data = co2_device.read_sensors(cache=True)
             logger.info(str(sensor_data))
 
+            # Update display
+            display_update(display_time, sensor_data, display=display)
+
+            # Live color wheel as aliveness indicator
+            periphs.neopixels[0] = peripherals.rgb_color_wheel(color_index)
+            periphs.neopixels.write()
+            color_index += 25
+
+            # Handle network related activities
             if network_enabled:
                 config["upload_rate_sec"] = config["light_sleep_sec"]
                 config["receive_rate_sec"] = config["light_sleep_sec"]
                 send_discovery(discovery_time, co2_device, device_state, net=net)
                 send_data(upload_time, co2_device, device_state, net=net)
                 time_sync(time_sync_time, device_state, net=net)
-                display_update(display_time, sensor_data, display=display)
                 receive_data(receive_time, device_state, net=net, recover=True)
 
                 if process_calibration(scd41, current_cal_val):
@@ -748,29 +767,29 @@ def main() -> None:
 
                 process_pressure(scd41, current_pressure)
 
-                # Live color wheel as aliveness indicator
-                periphs.neopixels[0] = peripherals.rgb_color_wheel(color_index)
-                periphs.neopixels.show()
-                color_index += 25
-
-            if not runtime.usb_connected or config["force_deep_sleep"]:
+            logger.warning(f"Run time: {time.ticks_ms() - app_start}")
+            if not periphs.usb_connected() or config["force_deep_sleep"]:
                 # State transition, reboot into deep sleep state
+                scd41.stop_periodic_measurement(delay_sec=0.0)
                 update_state(STATE_DEEP_SLEEP_SAMPLING)
                 reboot()
             else:
-                light_sleep(config["light_sleep_sec"])
+                light_sleep(config["light_sleep_sec"], lambda: False)
 
         elif STATE_DEEP_SLEEP == device_state:
             logger.info("Reading sensors...")
             sensor_data = co2_device.read_sensors(cache=True)
             logger.info(str(sensor_data))
 
+            # Update display
+            display_update(display_time, sensor_data, display=display)
+
+            # Handle network related activities
             if network_enabled:
                 net = send_discovery(discovery_time, co2_device, device_state, net=net)
                 net = send_data(upload_time, co2_device, device_state, net=net)
                 net = time_sync(time_sync_time, device_state, net=net)
                 net = receive_data(receive_time, device_state, net=net)
-                display_update(display_time, sensor_data, display=display)
                 process_calibration(scd41, current_cal_val)
                 process_temp_offset(scd41, current_temp_offset)
                 process_pressure(scd41, current_pressure)
@@ -778,12 +797,14 @@ def main() -> None:
                 if net and net.is_connected():
                     net.disconnect()
 
-            if runtime.usb_connected and not config["force_deep_sleep"]:
+            logger.warning(f"Run time: {time.ticks_ms() - app_start}")
+            if periphs.usb_connected() and not config["force_deep_sleep"]:
                 # State transition, reboot into light sleep state
                 update_state(STATE_LIGHT_SLEEP)
                 reboot()
             else:
                 update_state(STATE_DEEP_SLEEP_SAMPLING)
-                deep_sleep(config["deep_sleep_sec"])
+                # deep_sleep(config["deep_sleep_sec"], periphs.usb_connected)
+                deep_sleep(config["deep_sleep_sec"], lambda: False)
         else:
             raise RuntimeError(f"Unknown state: {device_state}")
