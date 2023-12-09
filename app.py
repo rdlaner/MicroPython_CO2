@@ -25,8 +25,6 @@ from config import config
 
 # Constants
 FORCE_CAL_DISABLED = const(-1)
-SCD4X_DEFAULT_ADDR = const(0x62)
-SCD41_CMD_SINGLE_SHOT = const(0x219D)
 SINGLE_SHOT_SLEEP_SEC = const(5)
 SENSOR_READ_TIMEOUT_SEC = const(5)
 STATE_LIGHT_SLEEP = const(0)
@@ -638,7 +636,7 @@ def main() -> None:
     if device_state == STATE_DEEP_SLEEP_SAMPLING:
         # Send single shot command and then go to sleep
         logger.info("Sending single shot...")
-        scd41._send_command(SCD41_CMD_SINGLE_SHOT)
+        scd41.single_shot()
         update_state(STATE_DEEP_SLEEP)
         # deep_sleep(SINGLE_SHOT_SLEEP_SEC, periphs.usb_connected)
         deep_sleep(SINGLE_SHOT_SLEEP_SEC, lambda: False)
