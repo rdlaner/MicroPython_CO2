@@ -1,4 +1,4 @@
-#pylint: disable=c-extension-no-member, no-member, no-name-in-module
+# pylint: disable=c-extension-no-member, no-member, no-name-in-module
 from app import main
 
 try:
@@ -17,10 +17,6 @@ except Exception as exc:
     file_handler = logging.FileHandler("Exception_Log.txt", "a")
     file_handler.setLevel(config["logging_level"])
     file_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(config["logging_level"])
-    stream_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
-    logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
 
     # Log message to file
@@ -32,6 +28,7 @@ except Exception as exc:
 
     # Close/flush file handler
     file_handler.close()
+    logging.shutdown()
 
     # NOTE: A hard reset will cause RTC memory to be lost
     periphs = peripherals.Peripherals(False)

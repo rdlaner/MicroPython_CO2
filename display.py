@@ -64,10 +64,6 @@ LARGE_FONT_WIDTH = const(19)
 # Globals
 logger = logging.getLogger("display")
 logger.setLevel(config["logging_level"])
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(config["logging_level"])
-stream_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
-logger.addHandler(stream_handler)
 
 # Text renderers
 small_writer = Writer(ssd, small_font, verbose=False)

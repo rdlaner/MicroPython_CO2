@@ -1,6 +1,7 @@
 """CO2 Sensor Application"""
 # pylint: disable=import-error, wrong-import-position, c-extension-no-member, no-member, no-name-in-module, import-outside-toplevel, logging-fstring-interpolation
 # pyright: reportGeneralTypeIssues=false
+# TODO: Write a button handler to wake the device from deep sleep and halt so we can get a repl when device is deep sleeping.
 # TODO: Use scd eeprom to persist settings. Use backup ram as buffer for storing transients only.
 # TODO: Switch to async MQTT?
 # TODO: Apply received miniot data when received.
@@ -51,14 +52,19 @@ SENSOR_NAME_CO2 = "CO2"
 SENSOR_NAME_HUM = "Humidity"
 SENSOR_NAME_TEMP = "Temperature"
 
+# Update root logger
+logging.getLogger().setLevel(config["logging_level"])
+for handler in logging.getLogger().handlers:
+    handler.setLevel(config["logging_level"])
+file_handler = logging.FileHandler("root_log.txt", "a")
+file_handler.setLevel(config["logging_level"])
+file_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
+logging.getLogger().addHandler(file_handler)
+
 # Globals
 backup_ram = BackupRAM()
 logger = logging.getLogger("CO2")
 logger.setLevel(config["logging_level"])
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(config["logging_level"])
-stream_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
-logger.addHandler(stream_handler)
 
 
 # MQTT Callbacks
