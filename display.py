@@ -135,7 +135,7 @@ def init() -> None:
     ssd.fill(0)
     ssd.show()
     while not ssd.ready():
-        time.sleep_ms(100)
+        time.sleep_ms(10)
 
 
 def refresh(delay: bool = False) -> None:
