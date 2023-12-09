@@ -638,8 +638,7 @@ def main() -> None:
         logger.info("Sending single shot...")
         scd41.single_shot()
         update_state(STATE_DEEP_SLEEP)
-        # deep_sleep(SINGLE_SHOT_SLEEP_SEC, periphs.usb_connected)
-        deep_sleep(SINGLE_SHOT_SLEEP_SEC, lambda: False)
+        deep_sleep(SINGLE_SHOT_SLEEP_SEC, lambda: config["fake_sleep"])
     elif device_state == STATE_LIGHT_SLEEP:
         periphs.ld02 = True
 
@@ -778,7 +777,7 @@ def main() -> None:
                 update_state(STATE_DEEP_SLEEP_SAMPLING)
                 reboot()
             else:
-                light_sleep(config["light_sleep_sec"], lambda: False)
+                light_sleep(config["light_sleep_sec"], periphs.usb_connected)
 
         elif STATE_DEEP_SLEEP == device_state:
             logger.info("Reading sensors...")
@@ -808,7 +807,6 @@ def main() -> None:
                 reboot()
             else:
                 update_state(STATE_DEEP_SLEEP_SAMPLING)
-                # deep_sleep(config["deep_sleep_sec"], periphs.usb_connected)
-                deep_sleep(config["deep_sleep_sec"], lambda: False)
+                deep_sleep(config["deep_sleep_sec"], lambda: config["fake_sleep"])
         else:
             raise RuntimeError(f"Unknown state: {device_state}")

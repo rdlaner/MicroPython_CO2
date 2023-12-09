@@ -23,8 +23,9 @@ config = {
     "display_refresh_rate_sec": const(120),
     "ambient_pressure": const(1000),
     "temp_offset_c": const(0.5),
-    "force_deep_sleep": True,
+    "force_deep_sleep": False,
     "logging_level": logging.WARNING,
+    "fake_sleep": False,
 
     # Display Configuration
     "display_enable": True,
