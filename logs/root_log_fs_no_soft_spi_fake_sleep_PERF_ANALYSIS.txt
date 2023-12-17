@@ -1,0 +1,150 @@
+Log - epd29-INFO:Init done.
+Num - 1
+Min - 4741
+Max - 4741
+Ave - 4741.0
+
+Log - app-DEBUG:Importing display...
+Num - 170
+Min - 150
+Max - 446
+Ave - 298.1823529411765
+
+Log - display-INFO:Refreshing display...
+Num - 170
+Min - 259
+Max - 314
+Ave - 260.6823529411765
+
+Log - app-INFO:Initializing device...
+Num - 342
+Min - 80
+Max - 344
+Ave - 198.3684210526316
+
+Log - app-DEBUG:Main start
+Num - 342
+Min - 2
+Max - 225
+Ave - 154.46783625730995
+
+Log - app-INFO:Initializing display...
+Num - 1
+Min - 123
+Max - 123
+Ave - 123.0
+
+Log - app-INFO:Initializing home assistant...
+Num - 171
+Min - 36
+Max - 188
+Ave - 104.64912280701755
+
+Log - app-INFO:Initializing scd41...
+Num - 342
+Min - 19
+Max - 151
+Ave - 63.91812865497076
+
+Log - app-DEBUG:Initializing backup ram...
+Num - 1
+Min - 38
+Max - 38
+Ave - 38.0
+
+Log - app-DEBUG:App start time:
+Num - 342
+Min - 7
+Max - 78
+Ave - 23.27777777777778
+
+Log - app-INFO:Updating display...
+Num - 170
+Min - 8
+Max - 37
+Ave - 22.78235294117647
+
+Log - app-INFO:Reading sensors...
+Num - 171
+Min - 20
+Max - 70
+Ave - 21.584795321637426
+
+Log - app-DEBUG:Creating home assistant device...
+Num - 171
+Min - 14
+Max - 67
+Ave - 15.894736842105264
+
+Log - app-INFO:Processing...
+Num - 171
+Min - 9
+Max - 62
+Ave - 10.461988304093568
+
+Log - app-DEBUG:Backup ram check duration:
+Num - 342
+Min - 2
+Max - 65
+Ave - 8.116959064327485
+
+Log - app-INFO:Sending single shot...
+Num - 171
+Min - 2
+Max - 72
+Ave - 6.847953216374269
+
+Log - app-DEBUG:Updating state to 2
+Num - 171
+Min - 2
+Max - 59
+Ave - 6.748538011695906
+
+Log - app-INFO:Wake reason:
+Num - 342
+Min - 1
+Max - 66
+Ave - 5.687134502923977
+
+Log - app-INFO:First boot: False
+Num - 342
+Min - 1
+Max - 83
+Ave - 5.56140350877193
+
+Log - app-INFO:Reset cause:
+Num - 342
+Min - 1
+Max - 64
+Ave - 5.192982456140351
+
+Log - app-INFO:{'Humidity':
+Num - 171
+Min - 2
+Max - 55
+Ave - 4.3391812865497075
+
+Log - display-DEBUG:Display update completed.
+Num - 170
+Min - 3
+Max - 51
+Ave - 4.3
+
+Log - app-INFO:Initial device state:
+Num - 342
+Min - 1
+Max - 57
+Ave - 3.4239766081871346
+
+Log - app-DEBUG:Updating state to 1
+Num - 171
+Min - 2
+Max - 51
+Ave - 3.3976608187134505
+
+Log - app-WARNING:Run time:
+Num - 171
+Min - 2
+Max - 4
+Ave - 2.736842105263158
+

@@ -1,0 +1,150 @@
+Log - sleep-INFO:Deep Sleeping...
+Num - 98
+Min - 5021
+Max - 120023
+Ave - 62521.92857142857
+
+Log - epd29-INFO:Init done.
+Num - 1
+Min - 4739
+Max - 4739
+Ave - 4739.0
+
+Log - display-INFO:Refreshing display...
+Num - 49
+Min - 259
+Max - 260
+Ave - 259.2244897959184
+
+Log - app-INFO:Initializing display...
+Num - 1
+Min - 122
+Max - 122
+Ave - 122.0
+
+Log - app-DEBUG:Importing display...
+Num - 49
+Min - 31
+Max - 51
+Ave - 49.3469387755102
+
+Log - app-INFO:Reading sensors...
+Num - 50
+Min - 20
+Max - 21
+Ave - 20.54
+
+Log - app-DEBUG:Creating home assistant device...
+Num - 50
+Min - 13
+Max - 14
+Ave - 13.92
+
+Log - app-INFO:Initializing home assistant...
+Num - 50
+Min - 12
+Max - 13
+Ave - 12.68
+
+Log - app-INFO:Initializing device...
+Num - 99
+Min - 10
+Max - 11
+Ave - 10.878787878787879
+
+Log - app-INFO:Processing...
+Num - 50
+Min - 6
+Max - 7
+Ave - 6.36
+
+Log - app-INFO:Initializing scd41...
+Num - 99
+Min - 4
+Max - 5
+Ave - 4.909090909090909
+
+Log - display-DEBUG:Display update completed.
+Num - 49
+Min - 2
+Max - 3
+Ave - 2.8979591836734695
+
+Log - app-INFO:Sending single shot...
+Num - 49
+Min - 2
+Max - 3
+Ave - 2.306122448979592
+
+Log - app-DEBUG:Backup ram check duration:
+Num - 99
+Min - 2
+Max - 3
+Ave - 2.272727272727273
+
+Log - app-INFO:Updating display...
+Num - 49
+Min - 2
+Max - 3
+Ave - 2.204081632653061
+
+Log - app-DEBUG:App start time:
+Num - 99
+Min - 2
+Max - 3
+Ave - 2.1515151515151514
+
+Log - app-DEBUG:Updating state to 2
+Num - 49
+Min - 2
+Max - 3
+Ave - 2.122448979591837
+
+Log - app-DEBUG:Updating state to 1
+Num - 50
+Min - 2
+Max - 3
+Ave - 2.1
+
+Log - app-WARNING:Run time:
+Num - 50
+Min - 1
+Max - 2
+Ave - 1.8
+
+Log - app-DEBUG:Main start
+Num - 99
+Min - 1
+Max - 2
+Ave - 1.707070707070707
+
+Log - app-INFO:Wake reason:
+Num - 99
+Min - 1
+Max - 2
+Ave - 1.696969696969697
+
+Log - app-INFO:Initial device state:
+Num - 99
+Min - 1
+Max - 2
+Ave - 1.4141414141414141
+
+Log - app-INFO:Reset cause:
+Num - 99
+Min - 1
+Max - 2
+Ave - 1.404040404040404
+
+Log - app-INFO:{'Humidity':
+Num - 50
+Min - 1
+Max - 2
+Ave - 1.26
+
+Log - app-INFO:First boot: False
+Num - 99
+Min - 1
+Max - 2
+Ave - 1.1616161616161615
+

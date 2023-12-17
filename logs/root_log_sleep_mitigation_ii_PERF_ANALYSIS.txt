@@ -1,0 +1,246 @@
+Log - epd29-ERROR:Unexpected error with display. Sleeping and then re-initializing. Status:
+Num - 1
+Min - 6995
+Max - 6995
+Ave - 6995.0
+
+Log - CO2-INFO:Initializing SCD41:
+Num - 1
+Min - 1003
+Max - 1003
+Ave - 1003.0
+
+Log - CO2-INFO:Persisting settings to EEPROM
+Num - 1
+Min - 802
+Max - 802
+Ave - 802.0
+
+Log - CO2-INFO:Initializing display...
+Num - 50
+Min - 178
+Max - 475
+Ave - 313.86
+
+Log - display-INFO:Refreshing display...
+Num - 50
+Min - 255
+Max - 257
+Ave - 255.74
+
+Log - CO2-INFO:Initializing device...
+Num - 103
+Min - 81
+Max - 292
+Ave - 186.85436893203882
+
+Log - CO2-DEBUG:Main start
+Num - 104
+Min - 2
+Max - 201
+Ave - 144.21153846153845
+
+Log - epd29-INFO:Init done.
+Num - 2
+Min - 2
+Max - 240
+Ave - 121.0
+
+Log - CO2-INFO:Initializing home assistant...
+Num - 51
+Min - 39
+Max - 165
+Ave - 97.56862745098039
+
+Log - epd29-DEBUG:BUSY: True
+Num - 51
+Min - 1
+Max - 4466
+Ave - 89.13725490196079
+
+Log - CO2-INFO:Initializing scd41...
+Num - 103
+Min - 23
+Max - 105
+Ave - 59.699029126213595
+
+Log - CO2-DEBUG:Initializing backup ram...
+Num - 2
+Min - 22
+Max - 23
+Ave - 22.5
+
+Log - CO2-INFO:Updating display...
+Num - 50
+Min - 9
+Max - 34
+Ave - 21.52
+
+Log - CO2-DEBUG:App start time:
+Num - 104
+Min - 9
+Max - 40
+Ave - 21.51923076923077
+
+Log - CO2-INFO:Reading sensors...
+Num - 51
+Min - 20
+Max - 22
+Ave - 20.784313725490197
+
+Log - CO2-DEBUG:Creating home assistant device...
+Num - 51
+Min - 14
+Max - 62
+Ave - 16.235294117647058
+
+Log - CO2-DEBUG:Updating state to 2
+Num - 52
+Min - 2
+Max - 19
+Ave - 9.403846153846153
+
+Log - CO2-INFO:Processing...
+Num - 51
+Min - 9
+Max - 10
+Ave - 9.196078431372548
+
+Log - CO2-INFO:First boot: True
+Num - 1
+Min - 8
+Max - 8
+Ave - 8.0
+
+Log - CO2-INFO:Initial device state:
+Num - 103
+Min - 1
+Max - 65
+Ave - 7.475728155339806
+
+Log - CO2-INFO:Reset cause:
+Num - 104
+Min - 1
+Max - 61
+Ave - 6.278846153846154
+
+Log - CO2-INFO:Sending single shot...
+Num - 52
+Min - 2
+Max - 19
+Ave - 5.788461538461538
+
+Log - CO2-INFO:{'Humidity':
+Num - 51
+Min - 1
+Max - 51
+Ave - 4.470588235294118
+
+Log - CO2-INFO:Updating self cal mode to OFF
+Num - 1
+Min - 4
+Max - 4
+Ave - 4.0
+
+Log - CO2-INFO:Updating temperature offset to 0.5
+Num - 1
+Min - 4
+Max - 4
+Ave - 4.0
+
+Log - CO2-INFO:Wake reason:
+Num - 104
+Min - 1
+Max - 66
+Ave - 3.625
+
+Log - CO2-INFO:First boot: False
+Num - 103
+Min - 1
+Max - 83
+Ave - 3.6116504854368934
+
+Log - CO2-WARNING:Run time:
+Num - 51
+Min - 2
+Max - 52
+Ave - 3.607843137254902
+
+Log - epd29-DEBUG:PON: False
+Num - 51
+Min - 1
+Max - 56
+Ave - 3.411764705882353
+
+Log - epd29-DEBUG:Status after refresh...
+Num - 51
+Min - 2
+Max - 55
+Ave - 3.3333333333333335
+
+Log - CO2-DEBUG:Updating state to 1
+Num - 51
+Min - 2
+Max - 18
+Ave - 3.2745098039215685
+
+Log - epd29-DEBUG:I2C_ERROR: False
+Num - 51
+Min - 1
+Max - 51
+Ave - 3.176470588235294
+
+Log - epd29-DEBUG:PTL_FLAG: True
+Num - 51
+Min - 1
+Max - 51
+Ave - 3.1176470588235294
+
+Log - display-DEBUG:Display update completed.
+Num - 50
+Min - 2
+Max - 4
+Ave - 3.1
+
+Log - CO2-INFO:Updating pressure to 1000
+Num - 1
+Min - 3
+Max - 3
+Ave - 3.0
+
+Log - epd29-DEBUG:POF: False
+Num - 51
+Min - 1
+Max - 10
+Ave - 2.3333333333333335
+
+Log - epd29-DEBUG:I2C_BUSY: False
+Num - 50
+Min - 1
+Max - 13
+Ave - 2.24
+
+Log - epd29-DEBUG:DATA_FLAG: False
+Num - 50
+Min - 1
+Max - 3
+Ave - 2.08
+
+Log - epd29-DEBUG:I2C_BUSY: True
+Num - 1
+Min - 2
+Max - 2
+Ave - 2.0
+
+Log - epd29-DEBUG:DATA_FLAG: True
+Num - 1
+Min - 2
+Max - 2
+Ave - 2.0
+
+Log - epd29-DEBUG:Raw:
+Num - 51
+Min - 1
+Max - 3
+Ave - 1.9411764705882353
+
