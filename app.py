@@ -54,10 +54,11 @@ SENSOR_NAME_TEMP = "Temperature"
 logging.getLogger().setLevel(config["logging_level"])
 for handler in logging.getLogger().handlers:
     handler.setLevel(config["logging_level"])
-file_handler = logging.FileHandler("root_log.txt", "a")
-file_handler.setLevel(config["logging_level"])
-file_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
-logging.getLogger().addHandler(file_handler)
+if config["log_to_fs"]:
+    file_handler = logging.FileHandler("root_log.txt", "a")
+    file_handler.setLevel(config["logging_level"])
+    file_handler.setFormatter(logging.Formatter("%(mono)d %(name)s-%(levelname)s:%(message)s"))
+    logging.getLogger().addHandler(file_handler)
 
 # Globals
 backup_ram = BackupRAM()

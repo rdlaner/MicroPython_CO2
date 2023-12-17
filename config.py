@@ -26,6 +26,7 @@ config = {
     "force_deep_sleep": False,
     "logging_level": logging.WARNING,
     "fake_sleep": False,
+    "log_to_fs": False,
 
     # Display Configuration
     "display_enable": True,
