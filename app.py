@@ -50,7 +50,7 @@ SENSOR_NAME_CO2 = "CO2"
 SENSOR_NAME_HUM = "Humidity"
 SENSOR_NAME_TEMP = "Temperature"
 
-# Update root logger
+# Setup logging
 logging.getLogger().setLevel(config["logging_level"])
 for handler in logging.getLogger().handlers:
     handler.setLevel(config["logging_level"])
@@ -62,7 +62,7 @@ if config["log_to_fs"]:
 
 # Globals
 backup_ram = BackupRAM()
-logger = logging.getLogger("CO2")
+logger = logging.getLogger("app")
 logger.setLevel(config["logging_level"])
 
 
@@ -131,6 +131,8 @@ def backup_ram_init(usb_connected: bool):
 
 def backup_ram_is_valid() -> bool:
     """Check if backup ram has been properly initialized"""
+    logger.debug("Checking backup ram...")
+
     try:
         backup_ram.get_element(BACKUP_NAME_PRESSURE)
         backup_ram.get_element(BACKUP_NAME_CAL)
@@ -162,12 +164,13 @@ def display_init() -> "Display":
     Returns:
         Display: New display object
     """
-    logger.info("Initializing display...")
     if config["display_enable"]:
+        logger.debug("Importing display...")
         import display
 
         # Do one-time initiliazation of display
         if not backup_ram.get_element(BACKUP_NAME_DISPLAY_INIT):
+            logger.info("Initializing display...")
             display.init()
             backup_ram.set_element(BACKUP_NAME_DISPLAY_INIT, True)
 
@@ -607,18 +610,20 @@ def main() -> None:
     logger.debug("Main start")
     logger.debug(f"App start time: {app_start}")
 
+    # Wake reasoning
     import machine
     first_boot = machine.reset_cause() in [machine.PWRON_RESET, machine.HARD_RESET]
-
     logger.info(f"Reset cause: {machine.reset_cause()}")
     logger.info(f"Wake reason: {machine.wake_reason()}")
     logger.info(f"First boot: {first_boot}")
 
-    # Init device
+    # Init board
     logger.info("Initializing device...")
     from platforms.unexpected_maker_feather_s3 import peripherals
     periphs = peripherals.Peripherals(False)
 
+    # Backup RAM
+    logger.debug("Backup RAM...")
     if first_boot:
         backup_ram_init(periphs.usb_connected())
     elif not backup_ram_is_valid():
@@ -718,12 +723,13 @@ def main() -> None:
     co2_device.add_number(number_pressure)
     co2_device.add_number(number_co2_ref)
 
+    # Update command topic to this specific device's unique ID
     config["topics"]["cmd_topic"] = f"{co2_device.number_topic}/cmd"
     color_index = 0
 
     # Main Loop
     while True:
-        logger.info("Processing...")
+        logger.info("Main loop, setting state vars...")
 
         # Load backup RAM data and state variables
         # State changes are processed on each pass through loop or on reboot
@@ -772,8 +778,9 @@ def main() -> None:
                 process_pressure(scd41, current_pressure)
 
             logger.warning(f"Run time: {time.ticks_ms() - app_start}")
+
+            # Go to sleep or hand state transition
             if not periphs.usb_connected() or config["force_deep_sleep"]:
-                # State transition, reboot into deep sleep state
                 scd41.stop_periodic_measurement(delay_sec=0.0)
                 update_state(STATE_DEEP_SLEEP_SAMPLING)
                 reboot()
@@ -802,8 +809,9 @@ def main() -> None:
                     net.disconnect()
 
             logger.warning(f"Run time: {time.ticks_ms() - app_start}")
+
+            # Go to sleep or hand state transition
             if periphs.usb_connected() and not config["force_deep_sleep"]:
-                # State transition, reboot into light sleep state
                 update_state(STATE_LIGHT_SLEEP)
                 reboot()
             else:
